@@ -198,12 +198,19 @@ def run_watch(nbi_url=DEFAULT_NBI, stb_ip=None):
 
 def run_simulate(tls_port=DEFAULT_TLS_PORT, nbi_url=DEFAULT_NBI):
     print(f"\n{BOLD}Simulating Full CWMP Chain (Synthetic Inform)...{NC}")
-    test_device_id = "000000-TEST--SIMULATED--DEVICE--9999"
     test_sn = "SIMULATED-9999"
+    device_id = f"000000-TEST-JioSTB-{test_sn}"
 
-    # SOAP Inform payload
+    # SOAP Inform payload, shaped like a REAL first-boot CPE inform: 0 BOOTSTRAP
+    # + 1 BOOT events, the full Device.DeviceInfo identity block, and explicitly
+    # xsi:type'd values. A bare 1-BOOT inform with one untyped parameter gets an
+    # InformResponse (so steps 1-2 pass) but GenieACS 1.2 never commits it to
+    # MongoDB -- the simulated device silently never exists.
     soap_body = f"""<?xml version="1.0" encoding="UTF-8"?>
 <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+               xmlns:soap-enc="http://schemas.xmlsoap.org/soap/encoding/"
+               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xmlns:xsd="http://www.w3.org/2001/XMLSchema"
                xmlns:cwmp="urn:dslforum-org:cwmp-1-0">
   <soap:Header>
     <cwmp:ID soap:mustUnderstand="1">1001</cwmp:ID>
@@ -216,7 +223,11 @@ def run_simulate(tls_port=DEFAULT_TLS_PORT, nbi_url=DEFAULT_NBI):
         <ProductClass>TEST-JioSTB</ProductClass>
         <SerialNumber>{test_sn}</SerialNumber>
       </DeviceId>
-      <Event soap:arrayType="cwmp:EventStruct[1]">
+      <Event soap-enc:arrayType="cwmp:EventStruct[2]">
+        <EventStruct>
+          <EventCode>0 BOOTSTRAP</EventCode>
+          <CommandKey></CommandKey>
+        </EventStruct>
         <EventStruct>
           <EventCode>1 BOOT</EventCode>
           <CommandKey></CommandKey>
@@ -225,10 +236,38 @@ def run_simulate(tls_port=DEFAULT_TLS_PORT, nbi_url=DEFAULT_NBI):
       <MaxEnvelopes>1</MaxEnvelopes>
       <CurrentTime>{time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}</CurrentTime>
       <RetryCount>0</RetryCount>
-      <ParameterList soap:arrayType="cwmp:ParameterValueStruct[1]">
+      <ParameterList soap-enc:arrayType="cwmp:ParameterValueStruct[8]">
+        <ParameterValueStruct>
+          <Name>Device.DeviceInfo.Manufacturer</Name>
+          <Value xsi:type="xsd:string">TEST</Value>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <Name>Device.DeviceInfo.ManufacturerOUI</Name>
+          <Value xsi:type="xsd:string">000000</Value>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <Name>Device.DeviceInfo.ProductClass</Name>
+          <Value xsi:type="xsd:string">TEST-JioSTB</Value>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <Name>Device.DeviceInfo.SerialNumber</Name>
+          <Value xsi:type="xsd:string">{test_sn}</Value>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <Name>Device.DeviceInfo.ModelName</Name>
+          <Value xsi:type="xsd:string">JHSD200-TEST</Value>
+        </ParameterValueStruct>
         <ParameterValueStruct>
           <Name>Device.DeviceInfo.SpecVersion</Name>
-          <Value>1.0</Value>
+          <Value xsi:type="xsd:string">1.4</Value>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <Name>Device.DeviceInfo.SoftwareVersion</Name>
+          <Value xsi:type="xsd:string">11.3.24</Value>
+        </ParameterValueStruct>
+        <ParameterValueStruct>
+          <Name>Device.ManagementServer.ParameterKey</Name>
+          <Value xsi:type="xsd:string"></Value>
         </ParameterValueStruct>
       </ParameterList>
     </cwmp:Inform>
@@ -277,23 +316,64 @@ def run_simulate(tls_port=DEFAULT_TLS_PORT, nbi_url=DEFAULT_NBI):
     except Exception as e:
         print(f"  {YELLOW}[WARN]{NC} Empty POST notice: {e}")
 
-    # Verify device exists in NBI
+    # Verify device exists in NBI. GenieACS 1.2 has no GET /devices/{id} route
+    # (that path returns 405), and this docker build percent-encodes hyphens in
+    # stored device ids ("TEST%2DJioSTB"), so an exact-equality query on the
+    # clean id never matches. Fetch the list and compare normalised ids.
     print(f"  [3/4] Checking device presence in GenieACS NBI...")
-    enc_id = urllib.parse.quote(f"000000-TEST-JioSTB-{test_sn}")
-    status, body = query_nbi(f"devices/{enc_id}", nbi_url=nbi_url)
-    if status == 200:
-        print(f"  {GREEN}[PASS]{NC} Simulated device confirmed in GenieACS database!")
+    found_id = None
+    for attempt in range(30):
+        status, body = query_nbi("devices/?projection=_id,_lastInform", nbi_url=nbi_url)
+        if status == 200:
+            try:
+                for d in json.loads(body):
+                    if str(d.get("_id", "")).replace("%2D", "-") == device_id:
+                        found_id = d.get("_id")
+                        break
+            except ValueError:
+                pass
+        if found_id:
+            break
+        if attempt and attempt % 5 == 0:
+            print(f"        ... still waiting for GenieACS to flush the device ({attempt * 2}s)")
+        time.sleep(2)
+    if found_id:
+        print(f"  {GREEN}[PASS]{NC} Simulated device confirmed in GenieACS database! (stored id: {found_id})")
     else:
-        print(f"  {RED}[FAIL]{NC} Simulated device not found in GenieACS NBI (HTTP {status})")
+        print(f"  {RED}[FAIL]{NC} Simulated device not found in GenieACS NBI (last HTTP {status})")
+        # Self-diagnose: dump everything the ACS actually stored, so we can tell
+        # "database empty" (inform silently dropped) from "stored under a
+        # different _id" (id-format mismatch), and point at the CWMP log.
+        d_status, d_body = query_nbi("devices/?projection=_id,_lastInform", nbi_url=nbi_url)
+        if d_status == 200:
+            try:
+                devices = json.loads(d_body)
+                if devices:
+                    print(f"        Devices currently in GenieACS:")
+                    for d in devices:
+                        print(f"          - {d.get('_id', '?')}  (last inform: {d.get('_lastInform', '?')})")
+                else:
+                    print(f"        GenieACS database is EMPTY: the Inform is answered with 200/")
+                    print(f"        InformResponse but never stored. Check the CWMP server log:")
+                    print(f"            docker logs genieacs --tail 50")
+            except ValueError:
+                print(f"        Could not parse the device list (HTTP {d_status}).")
         return False
 
-    # Clean up device
+    # Clean up device (DELETE /devices/{id} is a real NBI route, unlike GET).
+    # The stored id may contain literal "%2D"; percent-encode it again ("%252D")
+    # so a URL-decoding router maps it back to the stored form, and also try the
+    # raw spelling before giving up.
     print(f"  [4/4] Cleaning up simulated device from database...")
-    del_status, _ = query_nbi(f"devices/{enc_id}", nbi_url=nbi_url, method="DELETE")
+    del_status = 0
+    for enc_id in (urllib.parse.quote(str(found_id), safe=""), str(found_id)):
+        del_status, _ = query_nbi(f"devices/{enc_id}", nbi_url=nbi_url, method="DELETE")
+        if del_status in (200, 204):
+            break
     if del_status in (200, 204):
         print(f"  {GREEN}[PASS]{NC} Simulated device cleanly deleted from GenieACS.")
     else:
-        print(f"  {YELLOW}[WARN]{NC} Cleanup status: HTTP {del_status}")
+        print(f"  {YELLOW}[WARN]{NC} Cleanup status: HTTP {del_status} (delete it from the GenieACS UI at :3000 if it lingers)")
 
     print(f"\n{GREEN}{BOLD}Result: Full PC-side chain (TLS -> cookie proxy -> GenieACS CWMP -> NBI) is 100% OPERATIONAL!{NC}\n")
     return True

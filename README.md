@@ -16,9 +16,6 @@ A beginner-friendly, clutter-free walkthrough to enable **network ADB debugging*
 >
 > *All box families use the exact same `./stage1.sh` workflow. The only minor difference is in **Step 8** (launching the proxy listener).*
 
-> [!NOTE]
-> **About this fork:** all credit for the original method, tooling, and this guide belongs to the maintainers and researchers credited at the bottom — thank you for putting this repo together and keeping it free. This fork only adds newly verified models and small PC-side fixes, and it lives separately because pull requests are currently disabled on the upstream repository (I don't know why — hopefully temporary). Everything here is offered in the same free-and-open spirit.
-
 > [!TIP]
 > **Don't Panic If Something Goes Wrong:**
 > * **Box acting up?** Simply factory reset your Jio STB to restore it back to default settings, then start over.
@@ -52,7 +49,7 @@ Once you execute Stage 1, the script performs several handy quality-of-life modi
 ## ⚡ Quick Navigation
 
 * [Prerequisites](#-prerequisites)
-* [What's Fixed in This Fork](#-whats-fixed-in-this-fork)
+* [Recent Fixes](#-recent-fixes)
 * [Step-by-Step Guide](#-step-by-step-guide)
   * [1. Network Pairing](#step-1-network-pairing)
   * [2. Get Host IP](#step-2-get-host-ip)
@@ -73,7 +70,7 @@ Once you execute Stage 1, the script performs several handy quality-of-life modi
 
 ---
 
-## 🔧 What's Fixed in This Fork
+## 🔧 Recent Fixes
 
 Fixes needed to run the current stack (Python 3.13+, the `drumsergio/genieacs:1.2.13.2` image), found while validating the JHSD200 and JHSB200:
 

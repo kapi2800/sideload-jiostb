@@ -351,4 +351,4 @@ If you find this guide too complicated or don't have the time to configure Docke
   Huge thanks to **Pavit Chhabra** ([@mesosan16](https://twitter.com/mesosan16) on Twitter) for helping add JHS series support.
 
 * **JHSD200 & JHSB200 Validation + PC-Side Fixes:**  
-  Verified on two additional models and fixed `doctor.py --simulate` (GenieACS 1.2 NBI route, device persistence, `%2D` id encoding) plus Python 3.13 chain parsing in `jhs/forge_emudhra_chain.py` — **kapi2800** ([@kapi2800](https://github.com/kapi2800)).
+  Verified on two additional models and fixed `doctor.py --simulate` (GenieACS 1.2 NBI route, device persistence, `%2D` id encoding) plus Python 3.13 chain parsing in `jhs/forge_emudhra_chain.py` — **kapi2800** ([@kapi2800](https://github.com/kapi2800)). Details: [upstream issue](https://github.com/ilikechocopies/sideload-jiostb/issues/5)

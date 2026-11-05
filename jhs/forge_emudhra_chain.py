@@ -91,7 +91,10 @@ def fetch_intermediate():
         except (AttributeError, ssl.SSLError):
             return fetch_intermediate_openssl()
         if not chain or len(chain) < 2:
+            # Peer sent no intermediate; try the openssl s_client route.
             return fetch_intermediate_openssl()
+        # get_verified_chain() hands back DER-encoded bytes, not Certificate
+        # objects -- parse the intermediate (entry [1]) before returning it.
         return x509.load_der_x509_certificate(chain[1])
 
 

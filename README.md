@@ -1,6 +1,6 @@
-# Jio STB ADB Setup Guide (Windows 11 & 10)
+# Jio STB ADB Setup Guide (Windows 11 & 10) — now also verified on JHSD200 & JHSB200
 
-A beginner-friendly, clutter-free walkthrough to enable **network ADB debugging** and sideload custom launchers/apps on supported Jio Set-Top Boxes using a Windows PC and your home Wi-Fi router.
+A beginner-friendly, clutter-free walkthrough to enable **network ADB debugging** and sideload custom launchers/apps on supported Jio Set-Top Boxes (JMSC / JMSB / JHS series) using a Windows PC and your home Wi-Fi router.
 
 > [!TIP]
 > **Need Hands-On Help or Want Me to Do It For You?**
@@ -11,8 +11,13 @@ A beginner-friendly, clutter-free walkthrough to enable **network ADB debugging*
 > **Supported Hardware & Firmware:**
 > * **JMSC200Av2** and **JMSB200A** across firmware builds `22.1.09`, `24.1.39`, `25.1.9`, and older.
 > * **JHS series (JHSC200 v1 / JioOS 2.0)** on firmware build `stb-jhcs200-11.3.46`.
+> * **JHSD200 (JioOS 2.0)** on firmware build `stb-jhsd200-11.3.24` — verified November 2026.
+> * **JHSB200 (JioOS 2.0)** — verified November 2026.
 >
-> *Both box families use the exact same `./stage1.sh` workflow. The only minor difference is in **Step 8** (launching the proxy listener).*
+> *All box families use the exact same `./stage1.sh` workflow. The only minor difference is in **Step 8** (launching the proxy listener).*
+
+> [!NOTE]
+> **About this fork:** all credit for the original method, tooling, and this guide belongs to the maintainers and researchers credited at the bottom — thank you for putting this repo together and keeping it free. This fork only adds newly verified models and small PC-side fixes, and it lives separately because pull requests are currently disabled on the upstream repository (I don't know why — hopefully temporary). Everything here is offered in the same free-and-open spirit.
 
 > [!TIP]
 > **Don't Panic If Something Goes Wrong:**
@@ -47,6 +52,7 @@ Once you execute Stage 1, the script performs several handy quality-of-life modi
 ## ⚡ Quick Navigation
 
 * [Prerequisites](#-prerequisites)
+* [What's Fixed in This Fork](#-whats-fixed-in-this-fork)
 * [Step-by-Step Guide](#-step-by-step-guide)
   * [1. Network Pairing](#step-1-network-pairing)
   * [2. Get Host IP](#step-2-get-host-ip)
@@ -64,6 +70,30 @@ Once you execute Stage 1, the script performs several handy quality-of-life modi
 * [Advanced CLI & JHS Options](#-advanced-cli-options)
 * [Get Hands-On Help / Mail-In Setup](#-get-hands-on-help--mail-in-setup)
 * [Credits & Acknowledgments](#-credits--acknowledgments)
+
+---
+
+## 🔧 What's Fixed in This Fork
+
+Fixes needed to run the current stack (Python 3.13+, the `drumsergio/genieacs:1.2.13.2` image), found while validating the JHSD200 and JHSB200:
+
+1. **`jhs/forge_emudhra_chain.py` — Python 3.13+ chain parsing.** `SSLSocket.get_verified_chain()` returns DER-encoded `bytes`, not certificate objects; the intermediate is now parsed with `x509.load_der_x509_certificate()`, with an `openssl s_client` fallback. *(Before: `AttributeError: 'bytes' object has no attribute 'not_valid_before'`.)*
+2. **`doctor.py --simulate` — NBI lookup route.** Step [3/4] used `GET /devices/{id}`, which GenieACS 1.2 answers with `405`; the lookup now uses the query API. *(Before: `[FAIL] ... HTTP 405`.)*
+3. **`doctor.py --simulate` — device persistence.** The old synthetic Inform (bare `1 BOOT`, one untyped parameter) received `InformResponse` + `204` but GenieACS never wrote the device to MongoDB. The payload is now shaped like a real first-boot CPE (`0 BOOTSTRAP` + `1 BOOT`, full `Device.DeviceInfo.*` identity block, `xsi:type`d values). *(Before: `[FAIL] ... HTTP 200` with an empty database.)*
+4. **`doctor.py --simulate` — device-id encoding.** This GenieACS image stores device ids with percent-encoded hyphens (`TEST%2DJioSTB`); matching now normalises `%2D`, failures dump all stored ids for diagnosis, and cleanup tries both spellings.
+
+### ✅ Verified Quick Flow (JHSD200 / JHSB200, Nov 2026)
+
+Condensed order used to validate both boxes — full details in Steps 1–12 below:
+
+1. Prerequisites installed, repo cloned, STB DNS pointed at the PC (Steps 1–6).
+2. Firewall off for Domain / Private / Public profiles (Step 4); `cd tls` → `docker compose up -d` (Step 7).
+3. VS Code's built-in Git Bash terminal works fine for every terminal step.
+4. Terminal 1: `./jhs/run_acs.sh` (Option B) — leave it running; it *looks* stuck in the foreground, that is normal, it is the TLS front listening.
+5. Terminal 2: `python doctor.py --quick` (the DNS check WARNs on the PC itself — expected; what matters is what the STB resolves), then `python doctor.py --simulate` → all four steps PASS with the fixed files.
+6. `./stage1.sh --list-devices` → `./stage1.sh --tasks-only` → pick **your own STB's** device entry (`<OUI>-JHSD200-<serial>` style — the `000000-TEST-...` entry is only the `--simulate` leftover) and enter the STB IP when asked.
+7. If the USB-debugging task doesn't land on the first try, cold power-cycle the STB (unplug wall power) and retry — it goes through.
+8. Finish with `./jhs/jhs_stage1.sh --post-setup`.
 
 ---
 
@@ -173,7 +203,7 @@ python pass_front.py
 
 *(Leave this window running. `pass_front.py` includes a precomputed token fallback, so it works even if pycryptodome is absent).*
 
-#### Option B: For JHS Boxes (JHSC200 / JioOS 2.0)
+#### Option B: For JHS Boxes (JHSC200 / JHSD200 / JHSB200 / JioOS 2.0)
 
 JHS boxes enforce strict system CA certificate validation and reject the default certificate chain. Instead of `python pass_front.py`:
 
@@ -318,3 +348,6 @@ If you find this guide too complicated or don't have the time to configure Docke
 
 * **JHS Series & eMudhra Chain Research:**  
   Huge thanks to **Pavit Chhabra** ([@mesosan16](https://twitter.com/mesosan16) on Twitter) for helping add JHS series support.
+
+* **JHSD200 & JHSB200 Validation + PC-Side Fixes:**  
+  Verified on two additional models and fixed `doctor.py --simulate` (GenieACS 1.2 NBI route, device persistence, `%2D` id encoding) plus Python 3.13 chain parsing in `jhs/forge_emudhra_chain.py` — **kapi2800** ([@kapi2800](https://github.com/kapi2800)). Details: [upstream issue](https://github.com/ilikechocopies/sideload-jiostb/issues/5)

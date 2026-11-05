@@ -48,7 +48,7 @@ fail() { echo -e "  ${RED}✗${NC} $*"; }
 adb_sh() { "$ADB" -s "$STB_IP:$ADB_PORT" shell "$@" 2>&1; }
 ADB_PORT=5555
 
-enc() { "$ADB" -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "$1" 2>/dev/null \
+enc() { python -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "$1" 2>/dev/null \
         || python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "$1"; }
 
 post_json() {  # $1 = path, $2 = json body

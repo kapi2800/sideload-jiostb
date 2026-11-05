@@ -342,3 +342,13 @@
 [09:41:14.992] netcheck spoof: precomputed blob
 [09:41:14.994] ### listening on 0.0.0.0:8443 -> GenieACS 127.0.0.1:7547 ###
 [09:41:14.994] ### listening on 0.0.0.0:9443 -> GenieACS 127.0.0.1:7547 ###
+[08:26:54.786] ### pass_front (cookie-sticky, RILROOTCA chain) ports=[8443,9443] -> GenieACS ('127.0.0.1', 7547) ###
+[08:26:54.787] LAN IPs: 192.168.31.8
+[08:26:54.788] netcheck spoof: precomputed blob
+[08:26:54.789] ### listening on 0.0.0.0:9443 -> GenieACS 127.0.0.1:7547 ###
+[08:26:54.790] ### listening on 0.0.0.0:8443 -> GenieACS 127.0.0.1:7547 ###
+[08:31:01.776] ### pass_front (cookie-sticky, RILROOTCA chain) ports=[8443,9443] -> GenieACS ('127.0.0.1', 7547) ###
+[08:31:01.777] LAN IPs: 192.168.31.8
+[08:31:01.778] netcheck spoof: precomputed blob
+[08:31:01.781] ### listening on 0.0.0.0:8443 -> GenieACS 127.0.0.1:7547 ###
+[08:31:01.782] ### listening on 0.0.0.0:9443 -> GenieACS 127.0.0.1:7547 ###

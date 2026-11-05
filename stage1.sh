@@ -3,7 +3,7 @@
 # JioSTB C200A — Stage 1: ACS-based ADB Enable + Hardening
 #
 # Credits & Maintenance:
-#   - Vishal Beniwal (aka ilikechocopies, @soloxsurfer on Twitter): Streamlining the process & maintenance
+#   - Vishal Beniwal (Reddit: u/ilikechocopies): Streamlining the process & maintenance
 #   - Bihaan Sen: Original research & Housekeeping-PoC
 #   - ak_0o7: Exploit finding
 #   - Otus9051: Consolidation
@@ -168,7 +168,7 @@ banner() {
     echo -e "${CYAN}║${NC}            ${BCYAN}JioSTB C200A — Stage 1: TR-069 ADB Enable${NC}                  ${CYAN}║${NC}"
     echo -e "${CYAN}║                                                                       ║${NC}"
     echo -e "${CYAN}║  ${BYELLOW}★ Streamlined & Maintained by:${NC}                                       ${CYAN}║${NC}"
-    echo -e "${CYAN}║    ${BMAGENTA}✦ ${BWHITE}Vishal Beniwal ${BYELLOW}(aka ilikechocopies / @soloxsurfer)${NC}              ${CYAN}║${NC}"
+    echo -e "${CYAN}║    ${BMAGENTA}✦ ${BWHITE}Vishal Beniwal ${BYELLOW}(Reddit: u/ilikechocopies)${NC}                        ${CYAN}║${NC}"
     echo -e "${CYAN}║                                                                       ║${NC}"
     echo -e "${CYAN}║  ${BCYAN}Credits & Contributors:${NC}                                              ${CYAN}║${NC}"
     echo -e "${CYAN}║    • ${BWHITE}Bihaan Sen, ak_0o7${NC} (Research & Exploit)                          ${CYAN}║${NC}"
@@ -912,7 +912,7 @@ echo "    - Jio Ad Service uninstalled"
 [ "$APK_COUNT" -gt 0 ] && echo "    - $APK_COUNT app(s) installed"
 echo ""
 echo -e "${BYELLOW}★ Process Streamlined & Maintained by:${NC}"
-echo -e "  ${BMAGENTA}✦ ${BWHITE}Vishal Beniwal ${BYELLOW}(aka ilikechocopies / @soloxsurfer on Twitter)${NC}"
+echo -e "  ${BMAGENTA}✦ ${BWHITE}Vishal Beniwal ${BYELLOW}(Reddit: u/ilikechocopies)${NC}"
 echo ""
 echo -e "${BCYAN}Credits & Contributors:${NC}"
 echo -e "  • Bihaan Sen, ak_0o7 (Research & Exploit)"

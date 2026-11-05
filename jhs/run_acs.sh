@@ -44,10 +44,16 @@ ensure_python() {
     local vpy
     for c in python3 python; do command -v "$c" >/dev/null 2>&1 && { vpy="$c"; break; }; done
     [ -n "${vpy:-}" ] || die "no python3 available to install into"
-    [ -x "$VENV/bin/python" ] || "$vpy" -m venv "$VENV"
-    "$VENV/bin/pip" install --quiet cryptography >/dev/null 2>&1 \
+    [ -x "$VENV/bin/python" ] || [ -x "$VENV/Scripts/python.exe" ] || "$vpy" -m venv "$VENV"
+    local vpip="$VENV/bin/pip"
+    local vpython="$VENV/bin/python"
+    if [ ! -x "$vpython" ] && [ -x "$VENV/Scripts/python.exe" ]; then
+        vpython="$VENV/Scripts/python.exe"
+        vpip="$VENV/Scripts/pip.exe"
+    fi
+    "$vpip" install --quiet cryptography >/dev/null 2>&1 \
         || die "could not install cryptography (no network?). Run: pip install cryptography"
-    PY="$VENV/bin/python"
+    PY="$vpython"
     log "using $PY"
 }
 
@@ -95,4 +101,4 @@ echo "  And:  jhs/jhs_stage1.sh --post-setup"
 echo
 
 cd "$TLS_DIR"
-exec env TLS_CERT="$CHAIN" python3 pass_front.py
+exec env TLS_CERT="$CHAIN" "${PY:-python3}" pass_front.py
